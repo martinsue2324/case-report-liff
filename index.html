@@ -12,6 +12,7 @@
 
   <title>刑案進度回報</title>
 
+  <!-- LINE LIFF SDK -->
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
 
@@ -23,12 +24,14 @@
       padding: 0;
       width: 100%;
       height: 100%;
+
       font-family:
         -apple-system,
         BlinkMacSystemFont,
         "Segoe UI",
         "Microsoft JhengHei",
         sans-serif;
+
       background: #f5f5f5;
     }
 
@@ -50,13 +53,13 @@
 
 
     #loading h2 {
-      margin-bottom: 10px;
+      margin: 0 0 12px 0;
     }
 
 
     #loadingStatus {
       color: #666;
-      line-height: 1.6;
+      line-height: 1.7;
       word-break: break-all;
     }
 
@@ -64,19 +67,39 @@
     #errorBox {
       display: none;
 
+      width: 100%;
+      max-width: 520px;
+
+      box-sizing: border-box;
+
       margin-top: 20px;
+      padding: 16px;
 
-      padding: 15px;
-
-      background: #fff;
+      background: white;
 
       border-radius: 10px;
 
       text-align: left;
 
-      line-height: 1.6;
+      line-height: 1.7;
 
       word-break: break-all;
+    }
+
+
+    #retryButton {
+      display: none;
+
+      margin-top: 18px;
+      padding: 12px 20px;
+
+      border: 0;
+      border-radius: 8px;
+
+      font-size: 16px;
+      font-weight: bold;
+
+      cursor: pointer;
     }
 
 
@@ -99,9 +122,15 @@
 <body>
 
 
+<!-- =========================
+     載入畫面
+     ========================= -->
+
 <div id="loading">
 
-  <h2>刑案進度回報</h2>
+  <h2>
+    刑案進度回報
+  </h2>
 
   <div id="loadingStatus">
     正在初始化 LINE…
@@ -109,8 +138,20 @@
 
   <div id="errorBox"></div>
 
+  <button
+    id="retryButton"
+    type="button"
+    onclick="location.reload()"
+  >
+    重新載入
+  </button>
+
 </div>
 
+
+<!-- =========================
+     Apps Script 表單 iframe
+     ========================= -->
 
 <iframe
   id="formFrame"
@@ -118,11 +159,12 @@
 ></iframe>
 
 
+
 <script>
 
 
   /* ==========================================================
-     這兩個值請改成你的實際資料
+     你只需要修改這兩個值
      ========================================================== */
 
   const LIFF_ID =
@@ -135,7 +177,7 @@
 
 
   /* ==========================================================
-     LINE Profile
+     LINE 使用者資料
      ========================================================== */
 
   let lineProfile = {
@@ -148,27 +190,52 @@
 
 
   /* ==========================================================
-     初始化
+     LIFF 初始化
      ========================================================== */
 
   async function initialize() {
 
-
     const loadingStatus =
-      document.getElementById('loadingStatus');
-
+      document.getElementById(
+        'loadingStatus'
+      );
 
     const errorBox =
-      document.getElementById('errorBox');
+      document.getElementById(
+        'errorBox'
+      );
+
+    const retryButton =
+      document.getElementById(
+        'retryButton'
+      );
 
 
     try {
-
 
       loadingStatus.textContent =
         '正在初始化 LIFF…';
 
 
+      /*
+       * 確認 SDK 是否存在
+       */
+
+      if (
+        typeof liff ===
+        'undefined'
+      ) {
+
+        throw new Error(
+          'LIFF SDK 載入失敗'
+        );
+
+      }
+
+
+      /*
+       * 初始化 LIFF
+       */
 
       await liff.init({
 
@@ -177,13 +244,13 @@
       });
 
 
-
       /*
-       * 外部瀏覽器且未登入
+       * 若未登入 LINE
        */
 
-      if (!liff.isLoggedIn()) {
-
+      if (
+        !liff.isLoggedIn()
+      ) {
 
         loadingStatus.textContent =
           '正在登入 LINE…';
@@ -202,35 +269,48 @@
       }
 
 
+      /*
+       * 取得 Profile
+       */
 
       loadingStatus.textContent =
         '正在取得 LINE 使用者資料…';
-
 
 
       const profile =
         await liff.getProfile();
 
 
-
       lineProfile.displayName =
-        profile.displayName || '';
+        String(
+          profile.displayName || ''
+        ).trim();
 
 
       lineProfile.userId =
-        profile.userId || '';
+        String(
+          profile.userId || ''
+        ).trim();
 
 
+      /*
+       * 基本檢查
+       */
 
-      if (!lineProfile.userId) {
+      if (
+        !lineProfile.userId
+      ) {
 
         throw new Error(
-          '未取得 LINE User ID'
+          'LINE User ID 取得失敗'
         );
 
       }
 
 
+      /*
+       * 顯示確認
+       */
 
       loadingStatus.innerHTML =
 
@@ -239,9 +319,9 @@
         '<br>' +
 
         escapeHtml(
-          lineProfile.displayName
+          lineProfile.displayName ||
+          '未取得名稱'
         );
-
 
 
       /*
@@ -251,10 +331,13 @@
       loadAppsScriptForm();
 
 
-    } catch (error) {
+    }
 
+    catch (error) {
 
-      console.error(error);
+      console.error(
+        error
+      );
 
 
       loadingStatus.textContent =
@@ -265,175 +348,159 @@
         'block';
 
 
+      retryButton.style.display =
+        'inline-block';
+
+
       errorBox.innerHTML =
 
-        '<strong>錯誤：</strong><br>' +
+        '<strong>錯誤訊息：</strong>' +
+
+        '<br>' +
 
         escapeHtml(
           error.message ||
           String(error)
+        )
+
+        +
+
+        '<br><br>' +
+
+        '<strong>目前網址：</strong>' +
+
+        '<br>' +
+
+        escapeHtml(
+          window.location.href
         );
 
-
     }
-
 
   }
 
 
 
   /* ==========================================================
-     載入 Apps Script iframe
+     載入 Apps Script 表單
      ========================================================== */
 
   function loadAppsScriptForm() {
 
-
     const iframe =
-      document.getElementById('formFrame');
-
-
-    iframe.src =
-      APPS_SCRIPT_URL;
-
-
-
-    iframe.onload = function() {
-
-
-      /*
-       * Apps Script 頁面載入後，
-       * 把 LINE Profile 傳過去
-       */
-
-      sendLineProfile();
-
-
-      /*
-       * Google iframe 有時還會再做一次內部轉址，
-       * 所以稍後再補送幾次。
-       */
-
-      setTimeout(
-        sendLineProfile,
-        500
+      document.getElementById(
+        'formFrame'
       );
 
 
-      setTimeout(
-        sendLineProfile,
-        1200
+    const loading =
+      document.getElementById(
+        'loading'
       );
 
 
-      setTimeout(
-        sendLineProfile,
-        2500
+    const loadingStatus =
+      document.getElementById(
+        'loadingStatus'
       );
 
 
-      document
-        .getElementById('loading')
-        .style.display =
-        'none';
-
-
-      iframe.style.display =
-        'block';
-
-
-    };
-
-
-  }
-
-
-
-  /* ==========================================================
-     傳 LINE 身分給 Apps Script
-     ========================================================== */
-
-  function sendLineProfile() {
-
-
-    const iframe =
-      document.getElementById('formFrame');
-
+    /*
+     * 檢查 Apps Script URL
+     */
 
     if (
-      !iframe ||
-      !iframe.contentWindow
+      !APPS_SCRIPT_URL
+      ||
+      APPS_SCRIPT_URL.includes(
+        '你的AppsScript'
+      )
     ) {
 
-      return;
+      throw new Error(
+        '尚未設定 Apps Script Web App URL'
+      );
 
     }
 
 
-    iframe.contentWindow.postMessage(
+    /*
+     * 建立 URL
+     */
 
-      {
+    const url =
+      new URL(
+        APPS_SCRIPT_URL
+      );
 
-        type:
-          'LINE_PROFILE',
 
-        displayName:
-          lineProfile.displayName,
+    /*
+     * 把 LINE Profile 放進查詢參數
+     */
 
-        userId:
-          lineProfile.userId
+    url.searchParams.set(
 
-      },
+      'lineDisplayName',
 
-      '*'
+      lineProfile.displayName
 
     );
 
 
+    url.searchParams.set(
+
+      'lineUserId',
+
+      lineProfile.userId
+
+    );
+
+
+    /*
+     * 加入一個時間參數，
+     * 避免 iframe 讀到舊快取
+     */
+
+    url.searchParams.set(
+
+      '_t',
+
+      Date.now().toString()
+
+    );
+
+
+    loadingStatus.textContent =
+      '正在載入回報表單…';
+
+
+    /*
+     * 設定 iframe
+     */
+
+    iframe.src =
+      url.toString();
+
+
+    /*
+     * Apps Script 載入完成
+     */
+
+    iframe.onload =
+      function() {
+
+
+        loading.style.display =
+          'none';
+
+
+        iframe.style.display =
+          'block';
+
+
+      };
+
   }
-
-
-
-  /* ==========================================================
-     接收 Apps Script 訊息
-     ========================================================== */
-
-  window.addEventListener(
-    'message',
-    function(event) {
-
-
-      const data =
-        event.data;
-
-
-      if (
-        !data ||
-        typeof data !== 'object'
-      ) {
-
-        return;
-
-      }
-
-
-      /*
-       * Apps Script 表單準備完成，
-       * 再送一次 Profile
-       */
-
-      if (
-        data.type ===
-        'FORM_READY'
-      ) {
-
-        sendLineProfile();
-
-      }
-
-
-    }
-  );
 
 
 
@@ -442,7 +509,6 @@
      ========================================================== */
 
   function escapeHtml(value) {
-
 
     return String(
       value || ''
@@ -473,10 +539,13 @@
         '&#039;'
       );
 
-
   }
 
 
+
+  /* ==========================================================
+     啟動
+     ========================================================== */
 
   initialize();
 
@@ -487,4 +556,3 @@
 </body>
 
 </html>
-<!-- redeploy 2 -->
