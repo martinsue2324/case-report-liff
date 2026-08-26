@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1"
+  >
+
+  <title>刑案進度回報</title>
+
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+
+
+  <style>
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        "Microsoft JhengHei",
+        sans-serif;
+      background: #f5f5f5;
+    }
+
+
+    #loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+
+      min-height: 100vh;
+
+      padding: 24px;
+
+      box-sizing: border-box;
+
+      text-align: center;
+    }
+
+
+    #loading h2 {
+      margin-bottom: 10px;
+    }
+
+
+    #loadingStatus {
+      color: #666;
+      line-height: 1.6;
+      word-break: break-all;
+    }
+
+
+    #errorBox {
+      display: none;
+
+      margin-top: 20px;
+
+      padding: 15px;
+
+      background: #fff;
+
+      border-radius: 10px;
+
+      text-align: left;
+
+      line-height: 1.6;
+
+      word-break: break-all;
+    }
+
+
+    #formFrame {
+      display: none;
+
+      width: 100%;
+      height: 100vh;
+
+      border: 0;
+
+      background: white;
+    }
+
+  </style>
+
+</head>
+
+
+<body>
+
+
+<div id="loading">
+
+  <h2>刑案進度回報</h2>
+
+  <div id="loadingStatus">
+    正在初始化 LINE…
+  </div>
+
+  <div id="errorBox"></div>
+
+</div>
+
+
+<iframe
+  id="formFrame"
+  allow="clipboard-write"
+></iframe>
+
+
+<script>
+
+
+  /* ==========================================================
+     這兩個值請改成你的實際資料
+     ========================================================== */
+
+  const LIFF_ID =
+    '2011257972-LjL6gg4j';
+
+
+  const APPS_SCRIPT_URL =
+    'https://script.google.com/macros/s/AKfycbxrlijLUE-0cSb86YRJ8CCE9zI5Lc2fq-C9yjnUXxxOPgxfB-vJBlGiPn6hj870cXqXSw/exec';
+
+
+
+  /* ==========================================================
+     LINE Profile
+     ========================================================== */
+
+  let lineProfile = {
+
+    displayName: '',
+    userId: ''
+
+  };
+
+
+
+  /* ==========================================================
+     初始化
+     ========================================================== */
+
+  async function initialize() {
+
+
+    const loadingStatus =
+      document.getElementById('loadingStatus');
+
+
+    const errorBox =
+      document.getElementById('errorBox');
+
+
+    try {
+
+
+      loadingStatus.textContent =
+        '正在初始化 LIFF…';
+
+
+
+      await liff.init({
+
+        liffId: LIFF_ID
+
+      });
+
+
+
+      /*
+       * 外部瀏覽器且未登入
+       */
+
+      if (!liff.isLoggedIn()) {
+
+
+        loadingStatus.textContent =
+          '正在登入 LINE…';
+
+
+        liff.login({
+
+          redirectUri:
+            window.location.href
+
+        });
+
+
+        return;
+
+      }
+
+
+
+      loadingStatus.textContent =
+        '正在取得 LINE 使用者資料…';
+
+
+
+      const profile =
+        await liff.getProfile();
+
+
+
+      lineProfile.displayName =
+        profile.displayName || '';
+
+
+      lineProfile.userId =
+        profile.userId || '';
+
+
+
+      if (!lineProfile.userId) {
+
+        throw new Error(
+          '未取得 LINE User ID'
+        );
+
+      }
+
+
+
+      loadingStatus.innerHTML =
+
+        'LINE 身分確認成功' +
+
+        '<br>' +
+
+        escapeHtml(
+          lineProfile.displayName
+        );
+
+
+
+      /*
+       * 載入 Apps Script 表單
+       */
+
+      loadAppsScriptForm();
+
+
+    } catch (error) {
+
+
+      console.error(error);
+
+
+      loadingStatus.textContent =
+        'LINE 初始化失敗';
+
+
+      errorBox.style.display =
+        'block';
+
+
+      errorBox.innerHTML =
+
+        '<strong>錯誤：</strong><br>' +
+
+        escapeHtml(
+          error.message ||
+          String(error)
+        );
+
+
+    }
+
+
+  }
+
+
+
+  /* ==========================================================
+     載入 Apps Script iframe
+     ========================================================== */
+
+  function loadAppsScriptForm() {
+
+
+    const iframe =
+      document.getElementById('formFrame');
+
+
+    iframe.src =
+      APPS_SCRIPT_URL;
+
+
+
+    iframe.onload = function() {
+
+
+      /*
+       * Apps Script 頁面載入後，
+       * 把 LINE Profile 傳過去
+       */
+
+      sendLineProfile();
+
+
+      /*
+       * Google iframe 有時還會再做一次內部轉址，
+       * 所以稍後再補送幾次。
+       */
+
+      setTimeout(
+        sendLineProfile,
+        500
+      );
+
+
+      setTimeout(
+        sendLineProfile,
+        1200
+      );
+
+
+      setTimeout(
+        sendLineProfile,
+        2500
+      );
+
+
+      document
+        .getElementById('loading')
+        .style.display =
+        'none';
+
+
+      iframe.style.display =
+        'block';
+
+
+    };
+
+
+  }
+
+
+
+  /* ==========================================================
+     傳 LINE 身分給 Apps Script
+     ========================================================== */
+
+  function sendLineProfile() {
+
+
+    const iframe =
+      document.getElementById('formFrame');
+
+
+    if (
+      !iframe ||
+      !iframe.contentWindow
+    ) {
+
+      return;
+
+    }
+
+
+    iframe.contentWindow.postMessage(
+
+      {
+
+        type:
+          'LINE_PROFILE',
+
+        displayName:
+          lineProfile.displayName,
+
+        userId:
+          lineProfile.userId
+
+      },
+
+      '*'
+
+    );
+
+
+  }
+
+
+
+  /* ==========================================================
+     接收 Apps Script 訊息
+     ========================================================== */
+
+  window.addEventListener(
+    'message',
+    function(event) {
+
+
+      const data =
+        event.data;
+
+
+      if (
+        !data ||
+        typeof data !== 'object'
+      ) {
+
+        return;
+
+      }
+
+
+      /*
+       * Apps Script 表單準備完成，
+       * 再送一次 Profile
+       */
+
+      if (
+        data.type ===
+        'FORM_READY'
+      ) {
+
+        sendLineProfile();
+
+      }
+
+
+    }
+  );
+
+
+
+  /* ==========================================================
+     HTML escape
+     ========================================================== */
+
+  function escapeHtml(value) {
+
+
+    return String(
+      value || ''
+    )
+
+      .replaceAll(
+        '&',
+        '&amp;'
+      )
+
+      .replaceAll(
+        '<',
+        '&lt;'
+      )
+
+      .replaceAll(
+        '>',
+        '&gt;'
+      )
+
+      .replaceAll(
+        '"',
+        '&quot;'
+      )
+
+      .replaceAll(
+        "'",
+        '&#039;'
+      );
+
+
+  }
+
+
+
+  initialize();
+
+
+</script>
+
+
+</body>
+
+</html>
