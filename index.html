@@ -7,17 +7,24 @@
 
   <meta
     name="viewport"
-    content="width=device-width, initial-scale=1"
+    content="width=device-width, initial-scale=1, viewport-fit=cover"
   >
 
   <title>刑案進度回報</title>
+
 
   <!-- LINE LIFF SDK -->
   <script
     src="https://static.line-scdn.net/liff/edge/2/sdk.js"
   ></script>
 
+
   <style>
+
+    * {
+      box-sizing: border-box;
+    }
+
 
     html,
     body {
@@ -40,23 +47,8 @@
     }
 
 
-    #loading {
-
-      display: flex;
-
-      align-items: center;
-      justify-content: center;
-
-      width: 100%;
-      height: 100vh;
-
-      padding: 24px;
-
-      box-sizing: border-box;
-
-      text-align: center;
-
-      color: #555;
+    body {
+      overflow: hidden;
     }
 
 
@@ -66,10 +58,613 @@
 
       width: 100%;
       height: 100vh;
+      height: 100dvh;
 
       border: 0;
 
       background: white;
+    }
+
+
+    #loading {
+
+      display: flex;
+
+      align-items: center;
+      justify-content: center;
+
+      width: 100%;
+      height: 100vh;
+      height: 100dvh;
+
+      padding: 24px;
+
+      text-align: center;
+    }
+
+
+    .loading-box {
+
+      width: 100%;
+      max-width: 420px;
+
+      padding: 24px;
+
+      background: white;
+
+      border-radius: 14px;
+
+      box-shadow:
+        0 2px 10px
+        rgba(0,0,0,0.08);
+
+      color: #444;
+
+      line-height: 1.7;
+    }
+
+
+    .spinner {
+
+      width: 34px;
+      height: 34px;
+
+      margin:
+        0 auto
+        16px auto;
+
+      border:
+        4px solid #ddd;
+
+      border-top-color:
+        #333;
+
+      border-radius: 50%;
+
+      animation:
+        spin 0.8s
+        linear
+        infinite;
+    }
+
+
+    @keyframes spin {
+
+      to {
+        transform:
+          rotate(360deg);
+      }
+    }
+
+
+    .error-title {
+
+      margin-bottom: 12px;
+
+      font-size: 20px;
+      font-weight: bold;
+
+      color: #b00020;
+    }
+
+
+    .error-message {
+
+      white-space:
+        pre-wrap;
+
+      word-break:
+        break-word;
+    }
+
+
+    .error-note {
+
+      margin-top: 16px;
+
+      color: #777;
+
+      font-size: 13px;
+    }
+
+  </style>
+
+</head>
+
+
+<body>
+
+
+  <!--
+    Apps Script 回傳的正式系統
+    會載入到這個 iframe。
+  -->
+  <iframe
+    id="appFrame"
+    name="appFrame"
+    title="刑案進度回報"
+  ></iframe>
+
+
+
+  <!-- 登入 / 載入畫面 -->
+  <div id="loading">
+
+    <div class="loading-box">
+
+      <div class="spinner"></div>
+
+      <div id="loadingMessage">
+        正在驗證 LINE 身分並載入系統…
+      </div>
+
+    </div>
+
+  </div>
+
+
+
+  <script>
+
+    /* ======================================================
+       系統設定
+       ====================================================== */
+
+
+    /*
+     * 請填入目前正式使用中的 LIFF ID。
+     *
+     * 不要重新建立新的 LIFF。
+     */
+    const LIFF_ID =
+      '2011257972-LjL6gg4j';
+
+
+    /*
+     * 請填入目前 Apps Script 正式 Web App 的 /exec 網址。
+     *
+     * 例如：
+     *
+     * https://script.google.com/macros/s/AKfycbxxxxxxx/exec
+     */
+    const APPS_SCRIPT_URL =
+      'https://script.google.com/macros/s/AKfycbxrlijLUE-0cSb86YRJ8CCE9zI5Lc2fq-C9yjnUXxxOPgxfB-vJBlGiPn6hj870cXqXSw/exec';
+
+
+
+    /* ======================================================
+       啟動
+       ====================================================== */
+
+
+    async function startApp() {
+
+      try {
+
+        setLoadingMessage(
+          '正在初始化 LINE 登入…'
+        );
+
+
+        /*
+         * 1.
+         * 初始化 LIFF。
+         */
+        await liff.init({
+
+          liffId:
+            LIFF_ID
+        });
+
+
+
+        /*
+         * 2.
+         * 尚未登入時，
+         * 導向 LINE Login。
+         *
+         * 手機 LINE 內通常已有登入狀態。
+         * 電腦瀏覽器第一次可能需要登入 LINE。
+         */
+        if (
+          !liff.isLoggedIn()
+        ) {
+
+          setLoadingMessage(
+            '正在前往 LINE 登入…'
+          );
+
+
+          liff.login();
+
+
+          return;
+        }
+
+
+
+        /*
+         * 3.
+         * 取得 LINE 原始 ID Token。
+         *
+         * 這是目前安全版身分驗證的核心。
+         *
+         * 不再把：
+         *
+         * liff.getProfile().userId
+         *
+         * 當作後端可信身分。
+         */
+        setLoadingMessage(
+          '正在取得 LINE 登入憑證…'
+        );
+
+
+        const idToken =
+          liff.getIDToken();
+
+
+
+        if (!idToken) {
+
+          throw new Error(
+            '無法取得 LINE ID Token。\n請確認 LIFF 已啟用 openid scope。'
+          );
+        }
+
+
+
+        /*
+         * 4.
+         * 建立 POST 表單。
+         *
+         * 不使用：
+         *
+         * ?lineUserId=...
+         *
+         * 也不使用：
+         *
+         * ?idToken=...
+         *
+         * Token 不放在網址 query string。
+         */
+        setLoadingMessage(
+          '正在驗證身分…'
+        );
+
+
+        const form =
+          document.createElement(
+            'form'
+          );
+
+
+        form.method =
+          'POST';
+
+
+        form.action =
+          APPS_SCRIPT_URL;
+
+
+        /*
+         * Apps Script 回傳頁面
+         * 直接載入 appFrame。
+         */
+        form.target =
+          'appFrame';
+
+
+        form.style.display =
+          'none';
+
+
+
+        /*
+         * ID Token
+         */
+        const tokenInput =
+          document.createElement(
+            'input'
+          );
+
+
+        tokenInput.type =
+          'hidden';
+
+
+        tokenInput.name =
+          'idToken';
+
+
+        tokenInput.value =
+          idToken;
+
+
+        form.appendChild(
+          tokenInput
+        );
+
+
+
+        /*
+         * 5.
+         * 設定 iframe 載入完成事件。
+         */
+        const frame =
+          document.getElementById(
+            'appFrame'
+          );
+
+
+        let frameLoaded =
+          false;
+
+
+        frame.onload =
+          function() {
+
+            if (
+              frameLoaded
+            ) {
+
+              return;
+            }
+
+
+            frameLoaded =
+              true;
+
+
+            hideLoading();
+
+
+            frame.style.display =
+              'block';
+          };
+
+
+
+        /*
+         * 6.
+         * POST 至 Apps Script。
+         */
+        document.body.appendChild(
+          form
+        );
+
+
+        form.submit();
+
+
+
+        /*
+         * POST 完成後，
+         * 暫時建立的 form 即可移除。
+         */
+        setTimeout(
+          function() {
+
+            try {
+
+              form.remove();
+
+            } catch (error) {
+            }
+
+          },
+          1000
+        );
+
+
+
+        /*
+         * 7.
+         * 避免網路異常時永遠卡在 Loading。
+         */
+        setTimeout(
+          function() {
+
+            if (
+              !frameLoaded
+            ) {
+
+              showError(
+                '系統載入時間過長。\n請確認網路連線後重新開啟。'
+              );
+            }
+
+          },
+          30000
+        );
+
+
+      } catch (error) {
+
+        console.error(
+          '系統啟動失敗',
+          error
+        );
+
+
+        showError(
+
+          error &&
+          error.message
+
+            ? error.message
+
+            : String(error)
+        );
+      }
+    }
+
+
+
+    /* ======================================================
+       Loading
+       ====================================================== */
+
+
+    function setLoadingMessage(
+      message
+    ) {
+
+      const element =
+        document.getElementById(
+          'loadingMessage'
+        );
+
+
+      if (element) {
+
+        element.textContent =
+          message;
+      }
+    }
+
+
+    function hideLoading() {
+
+      const loading =
+        document.getElementById(
+          'loading'
+        );
+
+
+      if (loading) {
+
+        loading.style.display =
+          'none';
+      }
+    }
+
+
+
+    /* ======================================================
+       錯誤畫面
+       ====================================================== */
+
+
+    function showError(
+      message
+    ) {
+
+      const frame =
+        document.getElementById(
+          'appFrame'
+        );
+
+
+      if (frame) {
+
+        frame.style.display =
+          'none';
+      }
+
+
+      const loading =
+        document.getElementById(
+          'loading'
+        );
+
+
+      if (!loading) {
+
+        return;
+      }
+
+
+      loading.style.display =
+        'flex';
+
+
+      loading.innerHTML =
+
+        '<div class="loading-box">' +
+
+        '<div class="error-title">' +
+
+        '系統登入失敗' +
+
+        '</div>' +
+
+        '<div class="error-message">' +
+
+        escapeHtml(
+          message
+        )
+
+        +
+
+        '</div>' +
+
+        '<div class="error-note">' +
+
+        '請關閉本頁後，由 LINE 重新開啟系統。' +
+
+        '</div>' +
+
+        '</div>';
+    }
+
+
+
+    /* ======================================================
+       HTML Escape
+       ====================================================== */
+
+
+    function escapeHtml(
+      value
+    ) {
+
+      return String(
+        value || ''
+      )
+
+        .replaceAll(
+          '&',
+          '&amp;'
+        )
+
+        .replaceAll(
+          '<',
+          '&lt;'
+        )
+
+        .replaceAll(
+          '>',
+          '&gt;'
+        )
+
+        .replaceAll(
+          '"',
+          '&quot;'
+        )
+
+        .replaceAll(
+          "'",
+          '&#039;'
+        );
+    }
+
+
+
+    /* ======================================================
+       啟動
+       ====================================================== */
+
+
+    startApp();
+
+
+  </script>
+
+
+</body>
+
+</html>      background: white;
     }
 
 
