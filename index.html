@@ -12,12 +12,9 @@
 
   <title>刑案進度回報</title>
 
-
-  <!-- LINE LIFF SDK -->
   <script
     src="https://static.line-scdn.net/liff/edge/2/sdk.js"
   ></script>
-
 
   <style>
 
@@ -25,10 +22,8 @@
       box-sizing: border-box;
     }
 
-
     html,
     body {
-
       margin: 0;
       padding: 0;
 
@@ -46,14 +41,11 @@
         sans-serif;
     }
 
-
     body {
       overflow: hidden;
     }
 
-
     #appFrame {
-
       display: none;
 
       width: 100%;
@@ -65,9 +57,7 @@
       background: white;
     }
 
-
     #loading {
-
       display: flex;
 
       align-items: center;
@@ -82,9 +72,7 @@
       text-align: center;
     }
 
-
     .loading-box {
-
       width: 100%;
       max-width: 420px;
 
@@ -96,16 +84,14 @@
 
       box-shadow:
         0 2px 10px
-        rgba(0,0,0,0.08);
+        rgba(0, 0, 0, 0.08);
 
       color: #444;
 
       line-height: 1.7;
     }
 
-
     .spinner {
-
       width: 34px;
       height: 34px;
 
@@ -127,18 +113,13 @@
         infinite;
     }
 
-
     @keyframes spin {
-
       to {
-        transform:
-          rotate(360deg);
+        transform: rotate(360deg);
       }
     }
 
-
     .error-title {
-
       margin-bottom: 12px;
 
       font-size: 20px;
@@ -147,19 +128,12 @@
       color: #b00020;
     }
 
-
     .error-message {
-
-      white-space:
-        pre-wrap;
-
-      word-break:
-        break-word;
+      white-space: pre-wrap;
+      word-break: break-word;
     }
 
-
     .error-note {
-
       margin-top: 16px;
 
       color: #777;
@@ -175,10 +149,6 @@
 <body>
 
 
-  <!--
-    Apps Script 回傳的正式系統
-    會載入到這個 iframe。
-  -->
   <iframe
     id="appFrame"
     name="appFrame"
@@ -186,8 +156,6 @@
   ></iframe>
 
 
-
-  <!-- 登入 / 載入畫面 -->
   <div id="loading">
 
     <div class="loading-box">
@@ -203,30 +171,17 @@
   </div>
 
 
-
   <script>
 
+
     /* ======================================================
-       系統設定
+       正式系統設定
        ====================================================== */
 
-
-    /*
-     * 請填入目前正式使用中的 LIFF ID。
-     *
-     * 不要重新建立新的 LIFF。
-     */
     const LIFF_ID =
       '2011257972-LjL6gg4j';
 
 
-    /*
-     * 請填入目前 Apps Script 正式 Web App 的 /exec 網址。
-     *
-     * 例如：
-     *
-     * https://script.google.com/macros/s/AKfycbxxxxxxx/exec
-     */
     const APPS_SCRIPT_URL =
       'https://script.google.com/macros/s/AKfycbxrlijLUE-0cSb86YRJ8CCE9zI5Lc2fq-C9yjnUXxxOPgxfB-vJBlGiPn6hj870cXqXSw/exec';
 
@@ -235,7 +190,6 @@
     /* ======================================================
        啟動
        ====================================================== */
-
 
     async function startApp() {
 
@@ -246,55 +200,23 @@
         );
 
 
-        /*
-         * 1.
-         * 初始化 LIFF。
-         */
         await liff.init({
-
-          liffId:
-            LIFF_ID
+          liffId: LIFF_ID
         });
 
 
-
-        /*
-         * 2.
-         * 尚未登入時，
-         * 導向 LINE Login。
-         *
-         * 手機 LINE 內通常已有登入狀態。
-         * 電腦瀏覽器第一次可能需要登入 LINE。
-         */
-        if (
-          !liff.isLoggedIn()
-        ) {
+        if (!liff.isLoggedIn()) {
 
           setLoadingMessage(
             '正在前往 LINE 登入…'
           );
 
-
           liff.login();
-
 
           return;
         }
 
 
-
-        /*
-         * 3.
-         * 取得 LINE 原始 ID Token。
-         *
-         * 這是目前安全版身分驗證的核心。
-         *
-         * 不再把：
-         *
-         * liff.getProfile().userId
-         *
-         * 當作後端可信身分。
-         */
         setLoadingMessage(
           '正在取得 LINE 登入憑證…'
         );
@@ -302,7 +224,6 @@
 
         const idToken =
           liff.getIDToken();
-
 
 
         if (!idToken) {
@@ -313,21 +234,6 @@
         }
 
 
-
-        /*
-         * 4.
-         * 建立 POST 表單。
-         *
-         * 不使用：
-         *
-         * ?lineUserId=...
-         *
-         * 也不使用：
-         *
-         * ?idToken=...
-         *
-         * Token 不放在網址 query string。
-         */
         setLoadingMessage(
           '正在驗證身分…'
         );
@@ -347,10 +253,6 @@
           APPS_SCRIPT_URL;
 
 
-        /*
-         * Apps Script 回傳頁面
-         * 直接載入 appFrame。
-         */
         form.target =
           'appFrame';
 
@@ -359,10 +261,6 @@
           'none';
 
 
-
-        /*
-         * ID Token
-         */
         const tokenInput =
           document.createElement(
             'input'
@@ -386,11 +284,6 @@
         );
 
 
-
-        /*
-         * 5.
-         * 設定 iframe 載入完成事件。
-         */
         const frame =
           document.getElementById(
             'appFrame'
@@ -404,10 +297,7 @@
         frame.onload =
           function() {
 
-            if (
-              frameLoaded
-            ) {
-
+            if (frameLoaded) {
               return;
             }
 
@@ -424,11 +314,6 @@
           };
 
 
-
-        /*
-         * 6.
-         * POST 至 Apps Script。
-         */
         document.body.appendChild(
           form
         );
@@ -437,18 +322,11 @@
         form.submit();
 
 
-
-        /*
-         * POST 完成後，
-         * 暫時建立的 form 即可移除。
-         */
         setTimeout(
           function() {
 
             try {
-
               form.remove();
-
             } catch (error) {
             }
 
@@ -457,17 +335,10 @@
         );
 
 
-
-        /*
-         * 7.
-         * 避免網路異常時永遠卡在 Loading。
-         */
         setTimeout(
           function() {
 
-            if (
-              !frameLoaded
-            ) {
+            if (!frameLoaded) {
 
               showError(
                 '系統載入時間過長。\n請確認網路連線後重新開啟。'
@@ -488,12 +359,9 @@
 
 
         showError(
-
           error &&
           error.message
-
             ? error.message
-
             : String(error)
         );
       }
@@ -504,7 +372,6 @@
     /* ======================================================
        Loading
        ====================================================== */
-
 
     function setLoadingMessage(
       message
@@ -545,7 +412,6 @@
        錯誤畫面
        ====================================================== */
 
-
     function showError(
       message
     ) {
@@ -570,7 +436,6 @@
 
 
       if (!loading) {
-
         return;
       }
 
@@ -614,7 +479,6 @@
        HTML Escape
        ====================================================== */
 
-
     function escapeHtml(
       value
     ) {
@@ -654,375 +518,6 @@
     /* ======================================================
        啟動
        ====================================================== */
-
-
-    startApp();
-
-
-  </script>
-
-
-</body>
-
-</html>      background: white;
-    }
-
-
-    .error-box {
-
-      max-width: 520px;
-
-      padding: 20px;
-
-      margin: auto;
-
-      background: white;
-
-      border-radius: 12px;
-
-      box-shadow:
-        0 2px 10px
-        rgba(0,0,0,0.08);
-
-      line-height: 1.7;
-    }
-
-  </style>
-
-</head>
-
-
-<body>
-
-
-  <!--
-    Apps Script 最後會載入到這個 iframe。
-  -->
-  <iframe
-    id="appFrame"
-    name="appFrame"
-  ></iframe>
-
-
-  <div id="loading">
-
-    <div>
-      正在驗證 LINE 身分並載入系統…
-    </div>
-
-  </div>
-
-
-
-  <script>
-
-
-    /* ======================================================
-       這兩個值請使用你目前系統原本的值
-       ====================================================== */
-
-
-    const LIFF_ID =
-      '你的LIFF_ID';
-
-
-    const APPS_SCRIPT_URL =
-      '你的AppsScript_exec網址';
-
-
-
-    /* ======================================================
-       啟動系統
-       ====================================================== */
-
-
-    async function startApp() {
-
-      try {
-
-        /*
-         * 1.
-         * 初始化 LIFF
-         */
-        await liff.init({
-
-          liffId:
-            LIFF_ID
-
-        });
-
-
-
-        /*
-         * 2.
-         * 如果還沒登入 LINE，
-         * 先進行 LINE Login。
-         */
-        if (
-          !liff.isLoggedIn()
-        ) {
-
-          liff.login();
-
-          return;
-        }
-
-
-
-        /*
-         * 3.
-         * 取得 LINE 原始 ID Token。
-         *
-         * 不再使用：
-         *
-         * liff.getProfile().userId
-         *
-         * 當成後端可信身分。
-         */
-        const idToken =
-          liff.getIDToken();
-
-
-
-        if (!idToken) {
-
-          throw new Error(
-            '無法取得 LINE ID Token。請確認 LIFF 已啟用 openid scope。'
-          );
-        }
-
-
-
-        /*
-         * 4.
-         * 建立隱藏 POST form。
-         *
-         * Token 不放在網址：
-         *
-         * 不使用：
-         *
-         * ?idToken=xxxxx
-         *
-         * 而是以 POST 傳給 Apps Script。
-         */
-        const form =
-          document.createElement(
-            'form'
-          );
-
-
-        form.method =
-          'POST';
-
-
-        form.action =
-          APPS_SCRIPT_URL;
-
-
-        /*
-         * Apps Script 回傳的 HTML
-         * 載入 appFrame。
-         */
-        form.target =
-          'appFrame';
-
-
-        form.style.display =
-          'none';
-
-
-
-        /*
-         * 建立 ID Token 欄位。
-         */
-        const tokenInput =
-          document.createElement(
-            'input'
-          );
-
-
-        tokenInput.type =
-          'hidden';
-
-
-        tokenInput.name =
-          'idToken';
-
-
-        tokenInput.value =
-          idToken;
-
-
-        form.appendChild(
-          tokenInput
-        );
-
-
-
-        /*
-         * 5.
-         * 將 form 暫時加入畫面。
-         */
-        document.body.appendChild(
-          form
-        );
-
-
-
-        /*
-         * iframe 準備完成後，
-         * 顯示 Apps Script 系統。
-         */
-        const frame =
-          document.getElementById(
-            'appFrame'
-          );
-
-
-        frame.onload =
-          function() {
-
-            document
-              .getElementById(
-                'loading'
-              )
-              .style.display =
-              'none';
-
-
-            frame.style.display =
-              'block';
-          };
-
-
-
-        /*
-         * 6.
-         * 將 ID Token POST 給 Apps Script。
-         */
-        form.submit();
-
-
-
-        /*
-         * POST 後即可移除暫時 form。
-         */
-        setTimeout(
-          function() {
-
-            try {
-
-              form.remove();
-
-            } catch (e) {
-            }
-
-          },
-          1000
-        );
-
-
-      } catch (error) {
-
-        console.error(
-          error
-        );
-
-
-        showError(
-          error &&
-          error.message
-            ? error.message
-            : String(error)
-        );
-      }
-    }
-
-
-
-    /* ======================================================
-       錯誤顯示
-       ====================================================== */
-
-
-    function showError(message) {
-
-      const loading =
-        document.getElementById(
-          'loading'
-        );
-
-
-      loading.innerHTML =
-
-        '<div class="error-box">' +
-
-        '<h3>系統登入失敗</h3>' +
-
-        '<div>' +
-
-        escapeHtml(
-          message
-        ) +
-
-        '</div>' +
-
-        '<br>' +
-
-        '<div style="font-size:13px;color:#777;">' +
-
-        '請關閉頁面後，由 LINE 重新開啟系統。' +
-
-        '</div>' +
-
-        '</div>';
-    }
-
-
-
-    /* ======================================================
-       HTML escape
-       ====================================================== */
-
-
-    function escapeHtml(value) {
-
-      return String(
-        value || ''
-      )
-
-        .replaceAll(
-          '&',
-          '&amp;'
-        )
-
-        .replaceAll(
-          '<',
-          '&lt;'
-        )
-
-        .replaceAll(
-          '>',
-          '&gt;'
-        )
-
-        .replaceAll(
-          '"',
-          '&quot;'
-        )
-
-        .replaceAll(
-          "'",
-          '&#039;'
-        );
-    }
-
-
-
-    /* ======================================================
-       啟動
-       ====================================================== */
-
 
     startApp();
 
