@@ -295,10 +295,9 @@
           APPS_SCRIPT_URL;
 
 
-        // 以頂層頁面載入 Apps Script，避免 LINE 內建瀏覽器
-        // 對跨來源 iframe 的樣式限制造成頁面變成純文字。
+        // 以 LINE 內嵌頁框載入 Apps Script，避免跳出外部網站頁面。
         form.target =
-          '_top';
+          'appFrame';
 
 
         form.style.display =
