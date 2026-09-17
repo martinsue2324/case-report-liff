@@ -295,9 +295,9 @@
           APPS_SCRIPT_URL;
 
 
-        // 由頂層頁面載入 Apps Script，避免 LINE 內嵌頁框將頁面樣式當成純文字處理。
+        // 保留在正式 LIFF 入口頁，避免瀏覽器跳到 Apps Script 外部網域。
         form.target =
-          '_top';
+          'appFrame';
 
 
         form.style.display =
