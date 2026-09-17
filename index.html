@@ -295,9 +295,9 @@
           APPS_SCRIPT_URL;
 
 
-        // 以 LINE 內嵌頁框載入 Apps Script，避免跳出外部網站頁面。
+        // 由頂層頁面載入 Apps Script，避免 LINE 內嵌頁框將頁面樣式當成純文字處理。
         form.target =
-          'appFrame';
+          '_top';
 
 
         form.style.display =
